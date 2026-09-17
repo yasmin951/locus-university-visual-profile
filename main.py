@@ -1,11 +1,13 @@
 import os
 import io
 import json
+import time
 import requests
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from google import genai
 from PIL import Image
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
 
@@ -32,16 +34,28 @@ def search_university_images(university: str, category: str, num_results: int = 
             "url": item.get("imageUrl"),
             "source": item.get("link"),
             "title": item.get("title"),
+            "category": category,
         })
     return images
 
 
-def verify_image(image_url: str, university: str, category: str):
+def verify_image(img_data: dict, university: str):
+    image_url = img_data["url"]
+    category = img_data["category"]
+
     try:
-        img_response = requests.get(image_url, timeout=8)
+        headers = {"User-Agent": "Mozilla/5.0"}
+        img_response = requests.get(image_url, timeout=8, headers=headers)
+        content_type = img_response.headers.get("Content-Type", "")
+        if "image" not in content_type:
+            img_data["verification"] = {"category": "other", "confidence": 0, "reason": "URL does not point to a valid image"}
+            return img_data
         img = Image.open(io.BytesIO(img_response.content))
+        img.load()
+        img.thumbnail((800, 800))
     except Exception as e:
-        return {"category": "other", "confidence": 0, "reason": f"failed to load image: {e}"}
+        img_data["verification"] = {"category": "other", "confidence": 0, "reason": f"failed to load image: {e}"}
+        return img_data
 
     prompt = f"""You are verifying a photo for a university profile service.
 University: {university}
@@ -55,33 +69,55 @@ Look at the image and assess:
 Answer STRICTLY in JSON format, no extra text, no markdown:
 {{"category": "...", "confidence": 0, "reason": "..."}}"""
 
-    try:
-        result = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=[prompt, img]
-        )
-        text = result.text.strip()
-        text = text.replace("```json", "").replace("```", "").strip()
-        return json.loads(text)
-    except Exception as e:
-        return {"category": "other", "confidence": 0, "reason": f"verification error: {e}"}
-
+    for attempt in range(3):
+        try:
+            result = client.models.generate_content(
+                model="gemini-flash-lite-latest",
+                contents=[prompt, img]
+            )
+            text = result.text.strip().replace("```json", "").replace("```", "").strip()
+            img_data["verification"] = json.loads(text)
+            break
+        except Exception as e:
+            if "RESOURCE_EXHAUSTED" in str(e) and attempt < 2:
+                time.sleep(5)
+                continue
+            img_data["verification"] = {"category": "other", "confidence": 0, "reason": f"verification error: {e}"}
+            break
+    
+    return img_data
 
 @app.get("/profile")
 def get_profile(university: str):
+    start_time = time.time()
     categories = ["campus", "dormitory", "library", "classroom"]
-    result = {}
 
-    for category in categories:
-        images = search_university_images(university, category)
-        verified_images = []
-        for img in images[:3]:
-            verification = verify_image(img["url"], university, category)
-            img["verification"] = verification
-            verified_images.append(img)
-        result[category] = verified_images
+    # 1. Поиск фото по всем категориям параллельно
+    all_images = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(search_university_images, university, cat) for cat in categories]
+        for future in as_completed(futures):
+            all_images.extend(future.result()[:3])  # берём по 3 фото на категорию
 
-    return {"university": university, "categories": result}
+    # 2. Проверка всех фото параллельно
+    verified = []
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = [executor.submit(verify_image, img, university) for img in all_images]
+        for future in as_completed(futures):
+            verified.append(future.result())
+
+    # 3. Раскладываем обратно по категориям
+    result = {cat: [] for cat in categories}
+    for img in verified:
+        result[img["category"]].append(img)
+
+    elapsed = round(time.time() - start_time, 2)
+
+    return {
+        "university": university,
+        "search_time_seconds": elapsed,
+        "categories": result
+    }
 
 
 @app.get("/")
