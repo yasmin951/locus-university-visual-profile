@@ -69,13 +69,13 @@ Answer STRICTLY in JSON format, no extra text, no markdown:
 
 @app.get("/profile")
 def get_profile(university: str):
-    categories = ["campus"]
+    categories = ["campus", "dormitory", "library", "classroom"]
     result = {}
 
     for category in categories:
         images = search_university_images(university, category)
         verified_images = []
-        for img in images[:1]:
+        for img in images[:3]:
             verification = verify_image(img["url"], university, category)
             img["verification"] = verification
             verified_images.append(img)
