@@ -24,10 +24,6 @@ LOCUS Startup Hackathon 2026, Кейс 01.
 pip install -r requirements.txt
 python -m uvicorn main:app --reload
 
-SERPER_API_KEY=2b86ea46ce4243c4889d591ee25589f7b4fa946b
-GEMINI_API_KEY=AQ.Ab8RN6KICk64_-wZLU_7D-6X0BO-5kchwmUjSIp5w6tPM26xyA
-
-
 ## Ограничения
 - Бесплатный тариф Gemini имеет лимит запросов, что ограничивает скорость при высокой нагрузке
 - Первый запрос после простоя на хостинге Render может занимать до 50 секунд из-за "засыпания" бесплатного тарифа
