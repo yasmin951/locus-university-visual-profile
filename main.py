@@ -61,10 +61,12 @@ def verify_image(img_data: dict, university: str):
             return img_data
         img = Image.open(io.BytesIO(img_response.content))
         img.load()
-        img.thumbnail((400, 400))
+        img.thumbnail((300, 300))
         img_data["phash"] = str(imagehash.phash(img))
     except Exception as e:
         img_data["verification"] = {"category": "other", "confidence": 0, "reason": f"failed to load image: {e}"}
+        img.close()
+        del img
         return img_data
 
     prompt = f"""You are verifying a photo for a university profile service.
@@ -133,12 +135,10 @@ def get_profile(university: str):
         for future in as_completed(futures):
             all_images.extend(future.result()[:3])  # берём по 3 фото на категорию
 
-    # 2. Проверка всех фото параллельно
+        # 2. Проверка фото по очереди (экономим память)
     verified = []
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = [executor.submit(verify_image, img, university) for img in all_images]
-        for future in as_completed(futures):
-            verified.append(future.result())
+    for img in all_images:
+        verified.append(verify_image(img, university))
 
     # 3. Убираем дубли
     verified = remove_duplicates(verified)
