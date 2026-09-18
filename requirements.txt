@@ -2,7 +2,6 @@ fastapi
 uvicorn
 python-dotenv
 requests
-anthropic
-google-generativeai
+google-genai
 pillow
 imagehash

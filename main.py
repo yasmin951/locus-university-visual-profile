@@ -13,6 +13,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 load_dotenv()
 
 app = FastAPI()
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -149,6 +157,8 @@ def get_profile(university: str):
     }
 
 
+from fastapi.responses import FileResponse
+
 @app.get("/")
 def root():
-    return {"message": "Server is running"}
+    return FileResponse("index.html")
