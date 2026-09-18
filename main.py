@@ -124,9 +124,21 @@ def remove_duplicates(images: list, threshold: int = 5):
 
     return unique
 @app.get("/profile")
+
+def generate_summary(university: str):
+    prompt = f"Напиши краткое, объективное описание кампуса и студенческой жизни университета {university} в 2-3 предложениях, на основе общеизвестной информации. Без вымышленных фактов, только то, что широко известно."
+    try:
+        result = client.models.generate_content(
+            model="gemini-flash-lite-latest",
+            contents=[prompt]
+        )
+        return result.text.strip()
+    except Exception:
+        return "Описание временно недоступно."
+    
 def get_profile(university: str):
     start_time = time.time()
-    categories = ["campus", "dormitory", "library", "classroom"]
+    categories = ["campus", "dormitory", "library", "classroom", "city"]
 
     # 1. Поиск фото по всем категориям параллельно
     all_images = []
@@ -149,9 +161,11 @@ def get_profile(university: str):
         result[img["category"]].append(img)
 
     elapsed = round(time.time() - start_time, 2)
+    summary = generate_summary(university)
 
     return {
         "university": university,
+        "summary": summary,
         "search_time_seconds": elapsed,
         "categories": result
     }

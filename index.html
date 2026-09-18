@@ -167,6 +167,36 @@
     font-size: 13px;
     margin-bottom: 20px;
   }
+
+  body {
+  background: radial-gradient(circle at top, #151b2e, #0a0e18);
+}
+h1 {
+  background: linear-gradient(90deg, #4f8cff, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(79,140,255,0.15);
+}
+button {
+  background: linear-gradient(90deg, #4f8cff, #6f6cff);
+  transition: transform 0.15s ease;
+}
+button:hover {
+  transform: scale(1.03);
+}
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79,140,255,0.2);
+}
 </style>
 </head>
 <body>
@@ -181,6 +211,7 @@
 
   <div class="status" id="status"></div>
   <div class="time-badge" id="timeBadge"></div>
+  <div id="summaryBox" style="max-width:700px;margin:0 auto 30px;text-align:center;color:var(--text);line-height:1.6;"></div>
 
   <div class="filters" id="filters" style="display:none;">
     <button class="filter-btn active" data-cat="all" onclick="filterCategory('all')">Все</button>
@@ -188,6 +219,7 @@
     <button class="filter-btn" data-cat="dormitory" onclick="filterCategory('dormitory')">Общежитие</button>
     <button class="filter-btn" data-cat="library" onclick="filterCategory('library')">Библиотека</button>
     <button class="filter-btn" data-cat="classroom" onclick="filterCategory('classroom')">Аудитории</button>
+    <button class="filter-btn" data-cat="city" onclick="filterCategory('city')">Город</button>
   </div>
 
   <div id="results"></div>
@@ -222,6 +254,7 @@ async function search() {
     status.textContent = "";
     timeBadge.textContent = `Готово за ${data.search_time_seconds} сек`;
     filters.style.display = "flex";
+    document.getElementById("summaryBox").textContent = data.summary || "";
     renderResults(data.categories, "all");
   } catch (e) {
     status.textContent = "Не удалось получить данные. Проверьте, запущен ли сервер.";
@@ -250,7 +283,8 @@ function renderResults(categories, filter) {
     campus: "Кампус",
     dormitory: "Общежитие",
     library: "Библиотека",
-    classroom: "Аудитории"
+    classroom: "Аудитории",
+    city: "Город"
   };
 
   const keys = filter === "all" ? Object.keys(categories) : [filter];
