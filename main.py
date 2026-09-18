@@ -61,7 +61,7 @@ def verify_image(img_data: dict, university: str):
             return img_data
         img = Image.open(io.BytesIO(img_response.content))
         img.load()
-        img.thumbnail((800, 800))
+        img.thumbnail((400, 400))
         img_data["phash"] = str(imagehash.phash(img))
     except Exception as e:
         img_data["verification"] = {"category": "other", "confidence": 0, "reason": f"failed to load image: {e}"}
@@ -135,7 +135,7 @@ def get_profile(university: str):
 
     # 2. Проверка всех фото параллельно
     verified = []
-    with ThreadPoolExecutor(max_workers=12) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = [executor.submit(verify_image, img, university) for img in all_images]
         for future in as_completed(futures):
             verified.append(future.result())
