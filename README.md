@@ -1,2 +1,34 @@
-# locus-university-visual-profile
-AI service that generates a verified visual profile of any university in 30 seconds — campus, dorms, classrooms, and city photos, categorized and source-checked. Built for LOCUS Startup Hackathon 2026 (Case 01).
+# Визуальный профиль университета
+
+AI-сервис, который по названию университета находит, проверяет и категоризирует фотографии кампуса, общежитий, аудиторий и библиотек — с указанием источника и оценкой достоверности.
+
+## Задача
+LOCUS Startup Hackathon 2026, Кейс 01.
+
+## Стек
+- Backend: Python, FastAPI
+- Поиск фото: Serper.dev (Google Images API)
+- AI-верификация: Google Gemini (gemini-flash-lite-latest) — vision-модель проверяет, действительно ли фото относится к вузу/категории
+- Удаление дублей: perceptual hashing (imagehash)
+- Frontend: HTML/CSS/JavaScript
+
+## Как это работает
+1. Пользователь вводит название вуза
+2. Сервис параллельно ищет фото по категориям (campus, dormitory, library, classroom)
+3. Каждое фото скачивается и анализируется AI-моделью на предмет соответствия категории и вузу
+4. Дубли удаляются через сравнение перцептивных хэшей
+5. Результат отдаётся с указанием источника, названия и оценки достоверности
+
+## Запуск локально
+
+pip install -r requirements.txt
+python -m uvicorn main:app --reload
+
+SERPER_API_KEY=2b86ea46ce4243c4889d591ee25589f7b4fa946b
+GEMINI_API_KEY=AQ.Ab8RN6KICk64_-wZLU_7D-6X0BO-5kchwmUjSIp5w6tPM26xyA
+
+
+## Ограничения
+- Бесплатный тариф Gemini имеет лимит запросов, что ограничивает скорость при высокой нагрузке
+- Первый запрос после простоя на хостинге Render может занимать до 50 секунд из-за "засыпания" бесплатного тарифа
+- Работает надёжнее с известными университетами, где больше фото в открытых источниках
