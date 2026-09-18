@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 from google import genai
 from PIL import Image
+import imagehash
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
@@ -53,6 +54,7 @@ def verify_image(img_data: dict, university: str):
         img = Image.open(io.BytesIO(img_response.content))
         img.load()
         img.thumbnail((800, 800))
+        img_data["phash"] = str(imagehash.phash(img))
     except Exception as e:
         img_data["verification"] = {"category": "other", "confidence": 0, "reason": f"failed to load image: {e}"}
         return img_data
@@ -87,6 +89,30 @@ Answer STRICTLY in JSON format, no extra text, no markdown:
     
     return img_data
 
+def remove_duplicates(images: list, threshold: int = 5):
+    """Убирает визуально похожие фото, оставляя первое из каждой группы."""
+    unique = []
+    seen_hashes = []
+
+    for img in images:
+        phash_str = img.get("phash")
+        if not phash_str:
+            unique.append(img)
+            continue
+
+        current_hash = imagehash.hex_to_hash(phash_str)
+        is_duplicate = False
+
+        for seen in seen_hashes:
+            if current_hash - seen <= threshold:
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            seen_hashes.append(current_hash)
+            unique.append(img)
+
+    return unique
 @app.get("/profile")
 def get_profile(university: str):
     start_time = time.time()
@@ -106,7 +132,10 @@ def get_profile(university: str):
         for future in as_completed(futures):
             verified.append(future.result())
 
-    # 3. Раскладываем обратно по категориям
+    # 3. Убираем дубли
+    verified = remove_duplicates(verified)
+
+    # 4. Раскладываем обратно по категориям
     result = {cat: [] for cat in categories}
     for img in verified:
         result[img["category"]].append(img)
